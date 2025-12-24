@@ -3,6 +3,8 @@ import { getBase, TABLE_LEADS } from "@/lib/airtable";
 
 type ParamsPromise = { params: Promise<{ id: string }> };
 
+export const runtime = "nodejs";
+
 export async function GET(_: NextRequest, context: ParamsPromise) {
   try {
     const { id } = await context.params;

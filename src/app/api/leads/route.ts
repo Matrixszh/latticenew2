@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getBase, TABLE_LEADS } from "@/lib/airtable";
 
+export const runtime = "nodejs";
+
 export async function GET() {
   try {
     const base = getBase();

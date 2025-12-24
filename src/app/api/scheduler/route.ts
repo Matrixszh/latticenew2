@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getBase, TABLE_AUTOMATIONS, TABLE_EVENTS } from "@/lib/airtable";
 
+export const runtime = "nodejs";
+
 function parseDate(s?: string) {
   if (!s) return null;
   const d = new Date(s);
