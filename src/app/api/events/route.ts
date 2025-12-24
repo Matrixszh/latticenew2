@@ -21,10 +21,18 @@ export async function POST(request: Request) {
     if (!body?.Title) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
-    const fields = { ...body };
-    if (fields.Lead && typeof fields.Lead === "string") {
+    
+    // Filter out read-only fields just in case
+    const { id: _id, CreatedAt, UpdatedAt, ...cleanBody } = body;
+    const fields = { ...cleanBody };
+    
+    // Handle Lead field
+    if (fields.Lead === "") {
+      fields.Lead = [];
+    } else if (fields.Lead && typeof fields.Lead === "string") {
       fields.Lead = [fields.Lead];
     }
+
     const base = getBase();
     const created = await base(TABLE_EVENTS).create(
       [{ fields }],

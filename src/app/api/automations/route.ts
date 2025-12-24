@@ -20,12 +20,21 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const fields: Record<string, unknown> = { ...body };
-    if (typeof fields.Lead === "string") {
+    
+    // Handle Lead field
+    if (fields.Lead === "") {
+      fields.Lead = [];
+    } else if (typeof fields.Lead === "string") {
       fields.Lead = [fields.Lead];
     }
-    if (typeof fields.Event === "string") {
+    
+    // Handle Event field
+    if (fields.Event === "") {
+      fields.Event = [];
+    } else if (typeof fields.Event === "string") {
       fields.Event = [fields.Event];
     }
+    
     const base = getBase();
     let created: Records<FieldSet>;
     try {

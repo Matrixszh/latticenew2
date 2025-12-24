@@ -119,6 +119,11 @@ export default function AutomationsPage() {
     }
   };
 
+  const getSingleId = (val: string | string[] | undefined) => {
+    if (Array.isArray(val)) return val[0] || "";
+    return val || "";
+  };
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <h1 className="text-2xl font-semibold">Automations</h1>
@@ -133,7 +138,7 @@ export default function AutomationsPage() {
             />
             <select
               className="border rounded px-3 py-2"
-              value={typeof form.Lead === "string" ? form.Lead : ""}
+              value={getSingleId(form.Lead)}
               onChange={(e) => setForm((f) => ({ ...f, Lead: e.target.value }))}
             >
               <option value="">Lead</option>
@@ -145,7 +150,7 @@ export default function AutomationsPage() {
             </select>
             <select
               className="border rounded px-3 py-2"
-              value={typeof form.Event === "string" ? form.Event : ""}
+              value={getSingleId(form.Event)}
               onChange={(e) => setForm((f) => ({ ...f, Event: e.target.value }))}
             >
               <option value="">Event</option>

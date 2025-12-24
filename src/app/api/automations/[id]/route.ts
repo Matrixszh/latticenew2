@@ -13,6 +13,7 @@ export async function GET(_: NextRequest, context: ParamsPromise) {
     const record = await base(TABLE_AUTOMATIONS).find(id);
     return NextResponse.json({ data: { id: record.id, ...record.fields } });
   } catch (e: unknown) {
+    console.error("PUT Error:", e);
     const msg = e instanceof Error ? e.message : "Error";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
@@ -22,13 +23,25 @@ export async function PUT(request: NextRequest, context: ParamsPromise) {
   try {
     const { id } = await context.params;
     const body = await request.json();
-    const fields: Record<string, unknown> = { ...body };
-    if (typeof fields.Lead === "string") {
+    
+    // Filter out read-only fields or fields that shouldn't be updated directly
+    const { id: _id, CreatedAt, UpdatedAt, ...cleanBody } = body;
+    const fields: Record<string, unknown> = { ...cleanBody };
+    
+    // Handle Lead field
+    if (fields.Lead === "") {
+      fields.Lead = [];
+    } else if (typeof fields.Lead === "string") {
       fields.Lead = [fields.Lead];
     }
-    if (typeof fields.Event === "string") {
+    
+    // Handle Event field
+    if (fields.Event === "") {
+      fields.Event = [];
+    } else if (typeof fields.Event === "string") {
       fields.Event = [fields.Event];
     }
+    
     const base = getBase();
     let updated: Records<FieldSet>;
     try {
@@ -45,6 +58,7 @@ export async function PUT(request: NextRequest, context: ParamsPromise) {
     const data = updated.map((r) => ({ id: r.id, ...r.fields }))[0];
     return NextResponse.json({ data });
   } catch (e: unknown) {
+    console.error("PUT Error:", e);
     const msg = e instanceof Error ? e.message : "Error";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

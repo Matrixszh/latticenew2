@@ -8,6 +8,7 @@ export default function Home() {
         <div className="mt-6 grid gap-3">
           <Link className="underline" href="/leads">Leads</Link>
           <Link className="underline" href="/events">Events</Link>
+          <Link className="underline" href="/calendar">Calendar</Link>
           <Link className="underline" href="/automations">Automations</Link>
         </div>
       </main>
