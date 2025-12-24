@@ -8,7 +8,14 @@ export async function GET() {
   try {
     const base = getBase();
     const records = await base(TABLE_AUTOMATIONS).select({}).all();
-    const data = records.map((r) => ({ id: r.id, ...r.fields }));
+    const data = records.map((r) => {
+      const f = r.fields as Record<string, unknown>;
+      return { 
+        id: r.id, 
+        ...f,
+        Event: f.Events ?? f.Event 
+      };
+    });
     return NextResponse.json({ data });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Error";
@@ -28,21 +35,29 @@ export async function POST(request: Request) {
       fields.Lead = [fields.Lead];
     }
     
-    // Handle Event field
+    // Handle Event field (map to "Events" for Airtable)
     if (fields.Event === "") {
-      fields.Event = [];
+      fields.Events = [];
+      delete fields.Event;
     } else if (typeof fields.Event === "string") {
-      fields.Event = [fields.Event];
+      fields.Events = [fields.Event];
+      delete fields.Event;
+    } else if (Array.isArray(fields.Event)) {
+      fields.Events = fields.Event;
+      delete fields.Event;
     }
+
+    console.log("Creating Automation with fields:", JSON.stringify(fields, null, 2));
     
     const base = getBase();
     let created: Records<FieldSet>;
     try {
       created = await base(TABLE_AUTOMATIONS).create([{ fields: fields as unknown as FieldSet }], { typecast: true }) as Records<FieldSet>;
     } catch (err) {
-      if (fields.Event) {
+      console.error("Creation failed with Events, retrying without:", err);
+      if (fields.Events) {
         const fallback = { ...fields };
-        delete fallback.Event;
+        delete fallback.Events;
         created = await base(TABLE_AUTOMATIONS).create([{ fields: fallback as unknown as FieldSet }], { typecast: true }) as Records<FieldSet>;
       } else {
         throw err;

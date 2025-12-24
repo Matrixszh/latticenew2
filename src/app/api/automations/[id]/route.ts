@@ -11,7 +11,14 @@ export async function GET(_: NextRequest, context: ParamsPromise) {
     const { id } = await context.params;
     const base = getBase();
     const record = await base(TABLE_AUTOMATIONS).find(id);
-    return NextResponse.json({ data: { id: record.id, ...record.fields } });
+    const f = record.fields as Record<string, unknown>;
+    return NextResponse.json({ 
+      data: { 
+        id: record.id, 
+        ...f,
+        Event: f.Events ?? f.Event
+      } 
+    });
   } catch (e: unknown) {
     console.error("PUT Error:", e);
     const msg = e instanceof Error ? e.message : "Error";
@@ -35,11 +42,16 @@ export async function PUT(request: NextRequest, context: ParamsPromise) {
       fields.Lead = [fields.Lead];
     }
     
-    // Handle Event field
+    // Handle Event field (map to "Events" for Airtable)
     if (fields.Event === "") {
-      fields.Event = [];
+      fields.Events = [];
+      delete fields.Event;
     } else if (typeof fields.Event === "string") {
-      fields.Event = [fields.Event];
+      fields.Events = [fields.Event];
+      delete fields.Event;
+    } else if (Array.isArray(fields.Event)) {
+      fields.Events = fields.Event;
+      delete fields.Event;
     }
     
     const base = getBase();
@@ -47,9 +59,10 @@ export async function PUT(request: NextRequest, context: ParamsPromise) {
     try {
       updated = await base(TABLE_AUTOMATIONS).update([{ id, fields: fields as unknown as FieldSet }], { typecast: true }) as Records<FieldSet>;
     } catch (err) {
-      if (fields.Event) {
+      console.error("Update failed with Events, retrying without:", err);
+      if (fields.Events) {
         const fallback = { ...fields };
-        delete fallback.Event;
+        delete fallback.Events;
         updated = await base(TABLE_AUTOMATIONS).update([{ id, fields: fallback as unknown as FieldSet }], { typecast: true }) as Records<FieldSet>;
       } else {
         throw err;
