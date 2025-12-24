@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
 import { getBase, TABLE_AUTOMATIONS } from "@/lib/airtable";
+import { FieldSet, Records } from "airtable";
 
 type ParamsPromise = { params: Promise<{ id: string }> };
 
@@ -29,13 +30,14 @@ export async function PUT(request: NextRequest, context: ParamsPromise) {
       fields.Event = [fields.Event];
     }
     const base = getBase();
-    let updated;
+    let updated: Records<FieldSet>;
     try {
-      updated = await base(TABLE_AUTOMATIONS).update([{ id, fields }], { typecast: true });
+      updated = await base(TABLE_AUTOMATIONS).update([{ id, fields: fields as unknown as FieldSet }], { typecast: true }) as Records<FieldSet>;
     } catch (err) {
       if (fields.Event) {
-        const { Event, ...fallback } = fields;
-        updated = await base(TABLE_AUTOMATIONS).update([{ id, fields: fallback }], { typecast: true });
+        const fallback = { ...fields };
+        delete fallback.Event;
+        updated = await base(TABLE_AUTOMATIONS).update([{ id, fields: fallback as unknown as FieldSet }], { typecast: true }) as Records<FieldSet>;
       } else {
         throw err;
       }

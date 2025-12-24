@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getBase, TABLE_AUTOMATIONS } from "@/lib/airtable";
+import { FieldSet, Records } from "airtable";
 
 export const runtime = "nodejs";
 
@@ -26,13 +27,14 @@ export async function POST(request: Request) {
       fields.Event = [fields.Event];
     }
     const base = getBase();
-    let created;
+    let created: Records<FieldSet>;
     try {
-      created = await base(TABLE_AUTOMATIONS).create([{ fields }], { typecast: true });
+      created = await base(TABLE_AUTOMATIONS).create([{ fields: fields as unknown as FieldSet }], { typecast: true }) as Records<FieldSet>;
     } catch (err) {
       if (fields.Event) {
-        const { Event, ...fallback } = fields;
-        created = await base(TABLE_AUTOMATIONS).create([{ fields: fallback }], { typecast: true });
+        const fallback = { ...fields };
+        delete fallback.Event;
+        created = await base(TABLE_AUTOMATIONS).create([{ fields: fallback as unknown as FieldSet }], { typecast: true }) as Records<FieldSet>;
       } else {
         throw err;
       }
