@@ -21,18 +21,25 @@ export async function PUT(request: NextRequest, context: ParamsPromise) {
   try {
     const { id } = await context.params;
     const body = await request.json();
-    const fields = { ...body };
-    if (fields.Lead && typeof fields.Lead === "string") {
+    const fields: Record<string, unknown> = { ...body };
+    if (typeof fields.Lead === "string") {
       fields.Lead = [fields.Lead];
     }
-    if (fields.Event && typeof fields.Event === "string") {
+    if (typeof fields.Event === "string") {
       fields.Event = [fields.Event];
     }
     const base = getBase();
-    const updated = await base(TABLE_AUTOMATIONS).update(
-      [{ id, fields }],
-      { typecast: true }
-    );
+    let updated;
+    try {
+      updated = await base(TABLE_AUTOMATIONS).update([{ id, fields }], { typecast: true });
+    } catch (err) {
+      if (fields.Event) {
+        const { Event, ...fallback } = fields;
+        updated = await base(TABLE_AUTOMATIONS).update([{ id, fields: fallback }], { typecast: true });
+      } else {
+        throw err;
+      }
+    }
     const data = updated.map((r) => ({ id: r.id, ...r.fields }))[0];
     return NextResponse.json({ data });
   } catch (e: unknown) {

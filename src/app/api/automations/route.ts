@@ -18,18 +18,25 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const fields = { ...body };
-    if (fields.Lead && typeof fields.Lead === "string") {
+    const fields: Record<string, unknown> = { ...body };
+    if (typeof fields.Lead === "string") {
       fields.Lead = [fields.Lead];
     }
-    if (fields.Event && typeof fields.Event === "string") {
+    if (typeof fields.Event === "string") {
       fields.Event = [fields.Event];
     }
     const base = getBase();
-    const created = await base(TABLE_AUTOMATIONS).create(
-      [{ fields }],
-      { typecast: true }
-    );
+    let created;
+    try {
+      created = await base(TABLE_AUTOMATIONS).create([{ fields }], { typecast: true });
+    } catch (err) {
+      if (fields.Event) {
+        const { Event, ...fallback } = fields;
+        created = await base(TABLE_AUTOMATIONS).create([{ fields: fallback }], { typecast: true });
+      } else {
+        throw err;
+      }
+    }
     const data = created.map((r) => ({ id: r.id, ...r.fields }));
     return NextResponse.json({ data }, { status: 201 });
   } catch (e: unknown) {
