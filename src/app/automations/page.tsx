@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, RefreshCw, Trash2, Edit2, Zap, Mail, MessageSquare, Clock, ToggleLeft, ToggleRight, FileText, User, Calendar, Save, X, Search } from "lucide-react";
+import { Plus, RefreshCw, Trash2, Edit2, Zap, Mail, MessageSquare, Clock, ToggleLeft, ToggleRight, FileText, User, Calendar, Save, X, Search, Check } from "lucide-react";
 import clsx from "clsx";
 
 type Automation = {
   id: string;
   Name: string;
-  Lead?: string | string[];
+  Lead?: string | string[]; // Can be single ID or array of IDs
   Event?: string | string[];
   Channel?: string;
   OffsetMinutes?: number;
@@ -26,8 +26,9 @@ export default function AutomationsPage() {
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState<Partial<Automation>>({ Name: "" });
+  const [form, setForm] = useState<Partial<Automation>>({ Name: "", Active: true, Channel: "Email" });
   const [search, setSearch] = useState("");
+  const [isLeadDropdownOpen, setIsLeadDropdownOpen] = useState(false);
 
   const loadLeads = async () => {
     try {
@@ -74,8 +75,9 @@ export default function AutomationsPage() {
     setError(null);
     try {
       const payload: Partial<Automation> = { ...form };
-      if (payload.Lead && typeof payload.Lead === "string") payload.Lead = payload.Lead;
-      if (payload.Event && typeof payload.Event === "string") payload.Event = payload.Event;
+      // Ensure Lead is an array if it's not already
+      if (payload.Lead && typeof payload.Lead === "string") payload.Lead = [payload.Lead];
+      
       const res = await fetch("/api/automations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -85,7 +87,7 @@ export default function AutomationsPage() {
         const j: { error?: string } = await res.json();
         throw new Error(j.error ?? "Error");
       }
-      setForm({ Name: "" });
+      setForm({ Name: "", Active: true, Channel: "Email" });
       await loadAutomations();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Error creating";
@@ -98,8 +100,9 @@ export default function AutomationsPage() {
     setError(null);
     try {
       const payload: Partial<Automation> = { ...form };
-      if (payload.Lead && typeof payload.Lead === "string") payload.Lead = payload.Lead;
-      if (payload.Event && typeof payload.Event === "string") payload.Event = payload.Event;
+      // Ensure Lead is an array if it's not already
+      if (payload.Lead && typeof payload.Lead === "string") payload.Lead = [payload.Lead];
+
       const res = await fetch(`/api/automations/${form.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -109,7 +112,7 @@ export default function AutomationsPage() {
         const j: { error?: string } = await res.json();
         throw new Error(j.error ?? "Error");
       }
-      setForm({ Name: "" });
+      setForm({ Name: "", Active: true, Channel: "Email" });
       await loadAutomations();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Error updating";
@@ -127,11 +130,26 @@ export default function AutomationsPage() {
         throw new Error(j.error ?? "Error");
       }
       await loadAutomations();
-      if (form.id === id) setForm({ Name: "" });
+      if (form.id === id) setForm({ Name: "", Active: true, Channel: "Email" });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Error deleting";
       setError(msg);
     }
+  };
+
+  // Helper to handle Lead selection (toggle ID in array)
+  const toggleLead = (leadId: string) => {
+    const currentLeads = Array.isArray(form.Lead) ? form.Lead : form.Lead ? [form.Lead] : [];
+    if (currentLeads.includes(leadId)) {
+      setForm(f => ({ ...f, Lead: currentLeads.filter(id => id !== leadId) }));
+    } else {
+      setForm(f => ({ ...f, Lead: [...currentLeads, leadId] }));
+    }
+  };
+
+  const getSelectedLeadCount = () => {
+    const currentLeads = Array.isArray(form.Lead) ? form.Lead : form.Lead ? [form.Lead] : [];
+    return currentLeads.length;
   };
 
   const getSingleId = (val: string | string[] | undefined) => {
@@ -247,7 +265,7 @@ export default function AutomationsPage() {
               <h2 className="text-lg font-semibold">{form.id ? "Edit Automation" : "New Automation"}</h2>
               {form.id && (
                 <button 
-                  onClick={() => setForm({ Name: "" })}
+                  onClick={() => setForm({ Name: "", Active: true, Channel: "Email" })}
                   className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
                 >
                   <X className="h-3 w-3" /> Cancel
@@ -262,46 +280,69 @@ export default function AutomationsPage() {
                   <Zap className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <input
                     className="w-full pl-9 pr-3 py-2 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                    placeholder="Welcome Email"
+                    placeholder="Event Reminder"
                     value={form.Name ?? ""}
                     onChange={(e) => setForm((f) => ({ ...f, Name: e.target.value }))}
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Lead</label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <select
-                      className="w-full pl-9 pr-3 py-2 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none"
-                      value={getSingleId(form.Lead)}
-                      onChange={(e) => setForm((f) => ({ ...f, Lead: e.target.value }))}
-                    >
-                      <option value="">Select...</option>
-                      {leads.map((l) => (
-                        <option key={l.id} value={l.id}>{l.Name}</option>
-                      ))}
-                    </select>
-                  </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">Event</label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <select
+                    className="w-full pl-9 pr-3 py-2 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none"
+                    value={getSingleId(form.Event)}
+                    onChange={(e) => setForm((f) => ({ ...f, Event: e.target.value }))}
+                  >
+                    <option value="">Select Event...</option>
+                    {events.map((ev) => (
+                      <option key={ev.id} value={ev.id}>{ev.Title}</option>
+                    ))}
+                  </select>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Event</label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <select
-                      className="w-full pl-9 pr-3 py-2 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none"
-                      value={getSingleId(form.Event)}
-                      onChange={(e) => setForm((f) => ({ ...f, Event: e.target.value }))}
-                    >
-                      <option value="">Select...</option>
-                      {events.map((ev) => (
-                        <option key={ev.id} value={ev.id}>{ev.Title}</option>
-                      ))}
-                    </select>
+              </div>
+
+              <div className="space-y-2 relative">
+                <label className="text-sm font-medium text-muted-foreground">Leads ({getSelectedLeadCount()})</label>
+                <button
+                  onClick={() => setIsLeadDropdownOpen(!isLeadDropdownOpen)}
+                  className="w-full text-left pl-9 pr-3 py-2 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all relative"
+                >
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <span className={getSelectedLeadCount() === 0 ? "text-muted-foreground" : "text-foreground"}>
+                    {getSelectedLeadCount() === 0 ? "Select Leads..." : `${getSelectedLeadCount()} Leads Selected`}
+                  </span>
+                </button>
+                
+                {isLeadDropdownOpen && (
+                  <div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-md shadow-lg max-h-48 overflow-y-auto p-1">
+                    {leads.length === 0 ? (
+                       <div className="p-2 text-xs text-muted-foreground">No leads available</div>
+                    ) : (
+                      leads.map((l) => {
+                        const isSelected = (Array.isArray(form.Lead) ? form.Lead : form.Lead ? [form.Lead] : []).includes(l.id);
+                        return (
+                          <div 
+                            key={l.id} 
+                            onClick={() => toggleLead(l.id)}
+                            className={clsx("flex items-center gap-2 p-2 text-sm rounded cursor-pointer hover:bg-muted transition-colors", isSelected && "bg-blue-50 text-blue-700")}
+                          >
+                            <div className={clsx("w-4 h-4 border rounded flex items-center justify-center", isSelected ? "bg-primary border-primary" : "border-muted-foreground")}>
+                              {isSelected && <Check className="h-3 w-3 text-white" />}
+                            </div>
+                            {l.Name}
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
-                </div>
+                )}
+                {/* Backdrop to close dropdown */}
+                {isLeadDropdownOpen && (
+                  <div className="fixed inset-0 z-0" onClick={() => setIsLeadDropdownOpen(false)} style={{ pointerEvents: "auto", background: "transparent" }} />
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -323,10 +364,11 @@ export default function AutomationsPage() {
                   <input
                     type="number"
                     className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                    placeholder="0"
+                    placeholder="10"
                     value={form.OffsetMinutes?.toString() ?? ""}
                     onChange={(e) => setForm((f) => ({ ...f, OffsetMinutes: Number(e.target.value) }))}
                   />
+                  <p className="text-xs text-muted-foreground">Positive = before event</p>
                 </div>
               </div>
 
@@ -346,7 +388,7 @@ export default function AutomationsPage() {
                   <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <input
                     className="w-full pl-9 pr-3 py-2 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                    placeholder="Subject line..."
+                    placeholder="Reminder: {{Event}}"
                     value={form.TemplateSubject ?? ""}
                     onChange={(e) => setForm((f) => ({ ...f, TemplateSubject: e.target.value }))}
                   />
@@ -357,7 +399,7 @@ export default function AutomationsPage() {
                 <label className="text-sm font-medium text-muted-foreground">Template Body</label>
                 <textarea
                   className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm min-h-[120px] focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-y font-mono"
-                  placeholder="Hello {{Name}}, ..."
+                  placeholder="Hi {{Name}}, Don't forget about {{Event}} on {{Date}} at {{Location}}."
                   value={form.TemplateBody ?? ""}
                   onChange={(e) => setForm((f) => ({ ...f, TemplateBody: e.target.value }))}
                 />
