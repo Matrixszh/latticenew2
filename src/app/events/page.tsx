@@ -32,6 +32,26 @@ export default function EventsPage() {
   const [form, setForm] = useState<Partial<EventRecord>>({ Title: "" });
   const [search, setSearch] = useState("");
 
+  // Helper: Convert UTC string (from API) to Local datetime-local string (YYYY-MM-DDTHH:mm)
+  const toLocalInputFormat = (utcStr?: string) => {
+    if (!utcStr) return "";
+    const d = new Date(utcStr);
+    if (isNaN(d.getTime())) return "";
+    // Shift time by timezone offset to get local time values in UTC-like ISO string
+    const offsetMs = d.getTimezoneOffset() * 60000;
+    const localDate = new Date(d.getTime() - offsetMs);
+    // Slice to get YYYY-MM-DDTHH:mm
+    return localDate.toISOString().slice(0, 16);
+  };
+
+  // Helper: Convert Local datetime-local string to UTC ISO string (for API)
+  const toUTCISOString = (localStr?: string) => {
+    if (!localStr) return undefined;
+    const d = new Date(localStr);
+    if (isNaN(d.getTime())) return undefined;
+    return d.toISOString();
+  };
+
   const loadLeads = async () => {
     try {
       const res = await fetch("/api/leads", { cache: "no-store" });
@@ -67,6 +87,11 @@ export default function EventsPage() {
     try {
       const payload: Partial<EventRecord> = { ...form };
       if (payload.Lead && typeof payload.Lead === "string") payload.Lead = payload.Lead;
+      
+      // Convert Local Input Strings to UTC for Storage
+      if (payload.StartDateTime) payload.StartDateTime = toUTCISOString(payload.StartDateTime);
+      if (payload.EndDateTime) payload.EndDateTime = toUTCISOString(payload.EndDateTime);
+
       const res = await fetch("/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -90,6 +115,11 @@ export default function EventsPage() {
     try {
       const payload: Partial<EventRecord> = { ...form };
       if (payload.Lead && typeof payload.Lead === "string") payload.Lead = payload.Lead;
+      
+      // Convert Local Input Strings to UTC for Storage
+      if (payload.StartDateTime) payload.StartDateTime = toUTCISOString(payload.StartDateTime);
+      if (payload.EndDateTime) payload.EndDateTime = toUTCISOString(payload.EndDateTime);
+
       const res = await fetch(`/api/events/${form.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -127,6 +157,14 @@ export default function EventsPage() {
   const getSingleId = (val: string | string[] | undefined) => {
     if (Array.isArray(val)) return val[0] || "";
     return val || "";
+  };
+
+  const handleEdit = (ev: EventRecord) => {
+    setForm({
+      ...ev,
+      StartDateTime: toLocalInputFormat(ev.StartDateTime),
+      EndDateTime: toLocalInputFormat(ev.EndDateTime),
+    });
   };
 
   const filteredEvents = events.filter(e => 
@@ -184,7 +222,7 @@ export default function EventsPage() {
                     >
                       <div className="flex items-start justify-between">
                         <div 
-                          onClick={() => setForm(ev)}
+                          onClick={() => handleEdit(ev)}
                           className="flex-1 cursor-pointer"
                         >
                           <div className="flex items-center gap-2 mb-1">
@@ -212,7 +250,7 @@ export default function EventsPage() {
                         </div>
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button 
-                            onClick={() => setForm(ev)}
+                            onClick={() => handleEdit(ev)}
                             className="p-2 text-muted-foreground hover:text-primary hover:bg-blue-50 rounded-md transition-colors"
                           >
                             <Edit2 className="h-4 w-4" />

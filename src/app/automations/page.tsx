@@ -157,6 +157,24 @@ export default function AutomationsPage() {
     return val || "";
   };
 
+  const runScheduler = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/scheduler");
+      const json = await res.json();
+      console.log("Scheduler result:", json);
+      // Show a simple summary alert
+      const triggered = json.results?.filter((r: any) => r.status === "Success").length ?? 0;
+      alert(`Scheduler Finished.\nTriggered: ${triggered}\nCheck console for details.`);
+      await loadAutomations();
+    } catch (e) {
+      console.error("Scheduler failed", e);
+      alert("Failed to run scheduler.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredAutomations = automations.filter(a => 
     a.Name.toLowerCase().includes(search.toLowerCase()) ||
     a.TemplateSubject?.toLowerCase().includes(search.toLowerCase())
@@ -169,14 +187,24 @@ export default function AutomationsPage() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Automations</h1>
           <p className="text-muted-foreground">Configure automated workflows and notifications.</p>
         </div>
-        <button 
-          onClick={loadAutomations} 
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-md hover:bg-muted transition-colors text-sm font-medium shadow-sm"
-        >
-          <RefreshCw className={clsx("h-4 w-4", loading && "animate-spin")} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+            <button 
+              onClick={runScheduler} 
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-md transition-colors text-sm font-medium shadow-sm"
+            >
+              <Zap className={clsx("h-4 w-4", loading && "animate-pulse")} />
+              Run Checks Now
+            </button>
+            <button 
+              onClick={loadAutomations} 
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-md hover:bg-muted transition-colors text-sm font-medium shadow-sm"
+            >
+              <RefreshCw className={clsx("h-4 w-4", loading && "animate-spin")} />
+              Refresh
+            </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
