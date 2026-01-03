@@ -12,14 +12,20 @@ export async function GET() {
 export async function POST() {
   const now = new Date();
   console.log("----------------------------------------");
-  console.log("SCHEDULER RUNNING AT:", now.toISOString());
+  console.log("SCHEDULER RUNNING AT (UTC):", now.toISOString());
   
   const results: any[] = [];
+  
+  // Hardcoded Offset for IST (User's Timezone)
+  // Airtable stores "Wall Clock" time as UTC.
+  // We need to shift it back to get the Real UTC time for the event.
+  // IST is UTC+5:30. So Real UTC = Wall Clock UTC - 5.5 hours.
+  const USER_TZ_OFFSET_MS = 5.5 * 60 * 60 * 1000; 
 
   try {
     const base = getBase();
     
-    // 1. Fetch ALL automations (removed "Active" filter to prevent silent skips)
+    // 1. Fetch ALL automations
     const automations = await base(TABLE_AUTOMATIONS).select({}).all();
     console.log(`Found ${automations.length} total automations.`);
 
@@ -29,6 +35,12 @@ export async function POST() {
       const name = (fields.Name as string) ?? "Unnamed Automation";
       
       console.log(`\nChecking Automation: "${name}" (${automationId})`);
+
+      if (!fields.Active) {
+        console.log("-> SKIP: Automation is inactive.");
+        results.push({ name, status: "Skipped", reason: "Inactive" });
+        continue;
+      }
 
       try {
         // 2. Resolve Event
@@ -53,44 +65,43 @@ export async function POST() {
           continue;
         }
 
-        const eventStart = new Date(startStr);
-        if (isNaN(eventStart.getTime())) {
+        // eventStartWallClock is e.g. 22:10 UTC (representing 22:10 IST)
+        const eventStartWallClock = new Date(startStr);
+        if (isNaN(eventStartWallClock.getTime())) {
           console.log("-> SKIP: Invalid Event StartDateTime.");
           results.push({ name, status: "Skipped", reason: "Invalid start time" });
           continue;
         }
 
+        // Convert Wall Clock to Real UTC
+        // Real UTC = Wall Clock - 5.5h
+        const eventStartRealUTC = new Date(eventStartWallClock.getTime() - USER_TZ_OFFSET_MS);
+
         const offsetRaw = fields.OffsetMinutes as number | string | undefined;
         const offset = typeof offsetRaw === "number" ? offsetRaw : Number(offsetRaw ?? 0);
         
-        // Trigger Time = Event Start - Offset (minutes)
-        // e.g. Event 10:00, Offset 60 => Trigger 09:00
-        const triggerTime = new Date(eventStart.getTime() - offset * 60 * 1000);
+        // Trigger Time (Real UTC) = Event Start (Real UTC) - Offset (minutes)
+        const triggerTime = new Date(eventStartRealUTC.getTime() - offset * 60 * 1000);
 
-        console.log(`   Event Start: ${eventStart.toISOString()}`);
-        console.log(`   Offset: ${offset} mins`);
-        console.log(`   Trigger Time: ${triggerTime.toISOString()}`);
-        console.log(`   Current Time: ${now.toISOString()}`);
+        console.log(`   Event Wall Clock: ${eventStartWallClock.toISOString().replace("Z", " (IST)")}`);
+        console.log(`   Event Real UTC:   ${eventStartRealUTC.toISOString()}`);
+        console.log(`   Trigger Time UTC: ${triggerTime.toISOString()}`);
+        console.log(`   Current Time UTC: ${now.toISOString()}`);
 
         const diffMs = triggerTime.getTime() - now.getTime();
         const diffMins = Math.round(diffMs / 60000);
 
         // 4. Check Trigger Condition
-        // Condition A: We are PAST the trigger time (Now >= Trigger)
-        // Condition B: We haven't triggered it recently (LastTriggeredAt < TriggerTime OR null)
-        
-        const lastTriggeredRaw = fields.LastTriggeredAt as string | undefined;
-        const lastTriggered = lastTriggeredRaw ? new Date(lastTriggeredRaw) : null;
-
         if (now < triggerTime) {
           console.log(`-> WAIT: Too early. (Trigger in ${diffMins} mins)`);
           results.push({ name, status: "Waiting", triggerTime: triggerTime.toISOString(), minutesRemaining: diffMins });
           continue;
         }
 
-        // If we have triggered before, was it for THIS event instance?
-        // Simple heuristic: If LastTriggered was AFTER the calculated TriggerTime, we assume it's done.
-        // (This assumes 1 event = 1 trigger. If event time changes, we might re-trigger, which is acceptable).
+        // 5. Check if already triggered
+        const lastTriggeredRaw = fields.LastTriggeredAt as string | undefined;
+        const lastTriggered = lastTriggeredRaw ? new Date(lastTriggeredRaw) : null;
+
         if (lastTriggered && lastTriggered >= triggerTime) {
            console.log("-> DONE: Already triggered.");
            results.push({ name, status: "Skipped", reason: "Already triggered" });
@@ -99,7 +110,7 @@ export async function POST() {
 
         console.log("-> ACTION: Triggering now!");
 
-        // 5. Gather Leads (Automation Leads + Event Leads)
+        // 6. Gather Leads
         const autoLeadsRaw = (fields.Lead as string[] | string) ?? [];
         const autoLeadIds = Array.isArray(autoLeadsRaw) ? autoLeadsRaw : autoLeadsRaw ? [autoLeadsRaw] : [];
         
@@ -114,7 +125,7 @@ export async function POST() {
           continue;
         }
 
-        // 6. Send Emails
+        // 7. Send Emails
         const transporter = getTransporter();
         const from = getFromAddress();
         let sentCount = 0;
@@ -128,20 +139,18 @@ export async function POST() {
 
                 if (!email) continue;
 
-                // Variables
                 const vars: Record<string, string> = {
                     "{{Name}}": leadName,
                     "{{Event}}": (eventFields.Title as string) ?? "Event",
-                    "{{Date}}": eventStart.toLocaleString(),
+                    // Use Wall Clock time for email display
+                    "{{Date}}": eventStartWallClock.toLocaleString('en-US', { timeZone: 'UTC' }),
                     "{{Location}}": (eventFields.Location as string) ?? "",
                 };
 
                 let subject = (fields.TemplateSubject as string) ?? "Reminder: {{Event}}";
                 let body = (fields.TemplateBody as string) ?? "Hi {{Name}}, reminder for {{Event}}.";
 
-                // Replace all occurrences
                 Object.keys(vars).forEach(key => {
-                    // Escape special chars for regex just in case, though simple keys are safe
                     const safeKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     subject = subject.replace(new RegExp(safeKey, 'g'), vars[key]);
                     body = body.replace(new RegExp(safeKey, 'g'), vars[key]);
@@ -156,7 +165,7 @@ export async function POST() {
             }
         }
 
-        // 7. Update LastTriggeredAt
+        // 8. Update LastTriggeredAt
         if (sentCount > 0) {
             await base(TABLE_AUTOMATIONS).update([{
                 id: automationId,
@@ -165,7 +174,7 @@ export async function POST() {
             console.log(`-> SUCCESS: Sent ${sentCount} emails.`);
             results.push({ name, status: "Success", sent: sentCount });
         } else {
-            console.log("-> FAILED: 0 emails sent (check lead emails).");
+            console.log("-> FAILED: 0 emails sent.");
             results.push({ name, status: "Failed", reason: "0 emails sent" });
         }
 

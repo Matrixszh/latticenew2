@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, RefreshCw, Trash2, Edit2, Calendar, MapPin, Clock, User, AlignLeft, CheckCircle, XCircle, Save, X, Search } from "lucide-react";
+import { Plus, RefreshCw, Trash2, Edit2, Calendar, MapPin, Clock, User, AlignLeft, Save, X, Search } from "lucide-react";
 import clsx from "clsx";
 
 type EventRecord = {
@@ -32,24 +32,22 @@ export default function EventsPage() {
   const [form, setForm] = useState<Partial<EventRecord>>({ Title: "" });
   const [search, setSearch] = useState("");
 
-  // Helper: Convert UTC string (from API) to Local datetime-local string (YYYY-MM-DDTHH:mm)
+  // Helper: Format UTC string (from API) to Local datetime-local string (YYYY-MM-DDTHH:mm)
+  // We treat the stored UTC string as "Wall Clock" time (ignoring timezone)
   const toLocalInputFormat = (utcStr?: string) => {
     if (!utcStr) return "";
-    const d = new Date(utcStr);
-    if (isNaN(d.getTime())) return "";
-    // Shift time by timezone offset to get local time values in UTC-like ISO string
-    const offsetMs = d.getTimezoneOffset() * 60000;
-    const localDate = new Date(d.getTime() - offsetMs);
-    // Slice to get YYYY-MM-DDTHH:mm
-    return localDate.toISOString().slice(0, 16);
+    // utcStr is like "2025-01-03T21:25:00.000Z"
+    // We want "2025-01-03T21:25"
+    return utcStr.slice(0, 16);
   };
 
   // Helper: Convert Local datetime-local string to UTC ISO string (for API)
+  // We store the "Wall Clock" time directly as UTC
   const toUTCISOString = (localStr?: string) => {
     if (!localStr) return undefined;
-    const d = new Date(localStr);
-    if (isNaN(d.getTime())) return undefined;
-    return d.toISOString();
+    // localStr is "2025-01-03T21:25"
+    // We append ":00.000Z" to make it a valid UTC ISO string that visually matches the input
+    return `${localStr}:00.000Z`;
   };
 
   const loadLeads = async () => {
@@ -237,7 +235,7 @@ export default function EventsPage() {
                             {ev.StartDateTime && (
                               <div className="flex items-center gap-1">
                                 <Clock className="h-3.5 w-3.5" />
-                                {new Date(ev.StartDateTime).toLocaleString()}
+                                {new Date(ev.StartDateTime).toLocaleString(undefined, { timeZone: "UTC" })}
                               </div>
                             )}
                             {ev.Location && (
