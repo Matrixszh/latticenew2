@@ -14,7 +14,7 @@ export async function POST() {
   console.log("----------------------------------------");
   console.log("SCHEDULER RUNNING AT (UTC):", now.toISOString());
   
-  const results: any[] = [];
+  const results: unknown[] = [];
   
   // Hardcoded Offset for IST (User's Timezone)
   // Airtable stores "Wall Clock" time as UTC.

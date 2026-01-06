@@ -71,6 +71,25 @@ export default function AutomationsPage() {
     loadAutomations();
   }, []);
 
+  useEffect(() => {
+    let timer: number | undefined;
+    const start = () => {
+      if (timer) return;
+      timer = setInterval(async () => {
+        try {
+          const hasActive = automations.some(a => a.Active);
+          if (!hasActive) return;
+          await fetch("/api/scheduler", { cache: "no-store" });
+        } catch {
+        }
+      }, 60000) as unknown as number;
+    };
+    start();
+    return () => {
+      if (timer) clearInterval(timer as unknown as number);
+    };
+  }, [automations]);
+
   const createAutomation = async () => {
     setError(null);
     try {
@@ -161,10 +180,10 @@ export default function AutomationsPage() {
     setLoading(true);
     try {
       const res = await fetch("/api/scheduler");
-      const json = await res.json();
+      const json: { results?: Array<{ status?: string }> } = await res.json();
       console.log("Scheduler result:", json);
       // Show a simple summary alert
-      const triggered = json.results?.filter((r: any) => r.status === "Success").length ?? 0;
+      const triggered = json.results?.filter((r) => r.status === "Success").length ?? 0;
       alert(`Scheduler Finished.\nTriggered: ${triggered}\nCheck console for details.`);
       await loadAutomations();
     } catch (e) {
