@@ -1,0 +1,13 @@
+name: Scheduler Ping
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping scheduler
+        run: curl -sSf "$SCHEDULER_URL"
+        env:
+          SCHEDULER_URL: ${{ secrets.SCHEDULER_URL }}
