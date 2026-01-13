@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, RefreshCw, Trash2, Edit2, Calendar, MapPin, Clock, User, AlignLeft, Save, X, Search } from "lucide-react";
 import clsx from "clsx";
+import { apiFetch } from "@/lib/api";
 
 type EventRecord = {
   id: string;
@@ -52,7 +53,7 @@ export default function EventsPage() {
 
   const loadLeads = async () => {
     try {
-      const res = await fetch("/api/leads", { cache: "no-store" });
+      const res = await apiFetch("/leads", { cache: "no-store" });
       const json: { data?: Lead[] } = await res.json();
       setLeads((json.data ?? []).map((l) => ({ id: l.id, Name: l.Name })));
     } catch (e) {
@@ -64,7 +65,7 @@ export default function EventsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/events", { cache: "no-store" });
+      const res = await apiFetch("/events", { cache: "no-store" });
       const json: { data?: EventRecord[] } = await res.json();
       setEvents(json.data ?? []);
     } catch (e: unknown) {
@@ -90,7 +91,7 @@ export default function EventsPage() {
       if (payload.StartDateTime) payload.StartDateTime = toUTCISOString(payload.StartDateTime);
       if (payload.EndDateTime) payload.EndDateTime = toUTCISOString(payload.EndDateTime);
 
-      const res = await fetch("/api/events", {
+      const res = await apiFetch("/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -118,7 +119,7 @@ export default function EventsPage() {
       if (payload.StartDateTime) payload.StartDateTime = toUTCISOString(payload.StartDateTime);
       if (payload.EndDateTime) payload.EndDateTime = toUTCISOString(payload.EndDateTime);
 
-      const res = await fetch(`/api/events/${form.id}`, {
+      const res = await apiFetch(`/events/${form.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -139,7 +140,7 @@ export default function EventsPage() {
     if (!confirm("Are you sure you want to delete this event?")) return;
     setError(null);
     try {
-      const res = await fetch(`/api/events/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`/events/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const j: { error?: string } = await res.json();
         throw new Error(j.error ?? "Error");

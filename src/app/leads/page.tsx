@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, RefreshCw, Trash2, Edit2, User, Mail, Phone, Tag, Search, Save, X } from "lucide-react";
 import clsx from "clsx";
+import { apiFetch } from "@/lib/api";
 
 type Lead = {
   id: string;
@@ -34,7 +35,7 @@ export default function LeadsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/leads", { cache: "no-store" });
+      const res = await apiFetch("/leads", { cache: "no-store" });
       const json: { data?: Lead[] } = await res.json();
       setLeads(json.data ?? []);
     } catch (e: unknown) {
@@ -52,7 +53,7 @@ export default function LeadsPage() {
   const createLead = async () => {
     setError(null);
     try {
-      const res = await fetch("/api/leads", {
+      const res = await apiFetch("/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
@@ -73,7 +74,7 @@ export default function LeadsPage() {
     if (!form.id) return;
     setError(null);
     try {
-      const res = await fetch(`/api/leads/${form.id}`, {
+      const res = await apiFetch(`/leads/${form.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -101,7 +102,7 @@ export default function LeadsPage() {
     if (!confirm("Are you sure you want to delete this lead?")) return;
     setError(null);
     try {
-      const res = await fetch(`/api/leads/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`/leads/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const j = await res.json();
         throw new Error(j.error ?? "Error");

@@ -11,6 +11,7 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 import { motion } from "framer-motion";
 import { RefreshCw, Calendar as CalendarIcon, Clock, MapPin, Info } from "lucide-react";
 import clsx from "clsx";
+import { apiFetch } from "@/lib/api";
 
 const locales = {
   "en-US": enUS,
@@ -51,7 +52,7 @@ export default function CalendarPage() {
   const fetchEvents = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/events", { cache: "no-store" });
+      const res = await apiFetch("/events", { cache: "no-store" });
       const json: { data?: EventRecord[] } = await res.json();
       const apiEvents = json.data ?? [];
       

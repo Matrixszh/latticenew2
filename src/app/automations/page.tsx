@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, RefreshCw, Trash2, Edit2, Zap, Mail, MessageSquare, Clock, ToggleLeft, ToggleRight, FileText, User, Calendar, Save, X, Search, Check } from "lucide-react";
 import clsx from "clsx";
+import { apiFetch } from "@/lib/api";
 
 type Automation = {
   id: string;
@@ -32,7 +33,7 @@ export default function AutomationsPage() {
 
   const loadLeads = async () => {
     try {
-      const res = await fetch("/api/leads", { cache: "no-store" });
+      const res = await apiFetch("/leads", { cache: "no-store" });
       const json: { data?: Lead[] } = await res.json();
       setLeads((json.data ?? []).map((l) => ({ id: l.id, Name: l.Name })));
     } catch (e) {
@@ -42,7 +43,7 @@ export default function AutomationsPage() {
 
   const loadEvents = async () => {
     try {
-      const res = await fetch("/api/events", { cache: "no-store" });
+      const res = await apiFetch("/events", { cache: "no-store" });
       const json: { data?: EventRecord[] } = await res.json();
       setEvents((json.data ?? []).map((e) => ({ id: e.id, Title: e.Title })));
     } catch (e) {
@@ -54,7 +55,7 @@ export default function AutomationsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/automations", { cache: "no-store" });
+      const res = await apiFetch("/automations", { cache: "no-store" });
       const json: { data?: Automation[] } = await res.json();
       setAutomations(json.data ?? []);
     } catch (e: unknown) {
@@ -79,7 +80,7 @@ export default function AutomationsPage() {
         try {
           const hasActive = automations.some(a => a.Active);
           if (!hasActive) return;
-          await fetch("/api/scheduler", { cache: "no-store" });
+          await apiFetch("/scheduler", { cache: "no-store" });
         } catch {
         }
       }, 60000) as unknown as number;
@@ -97,7 +98,7 @@ export default function AutomationsPage() {
       // Ensure Lead is an array if it's not already
       if (payload.Lead && typeof payload.Lead === "string") payload.Lead = [payload.Lead];
       
-      const res = await fetch("/api/automations", {
+      const res = await apiFetch("/automations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -122,7 +123,7 @@ export default function AutomationsPage() {
       // Ensure Lead is an array if it's not already
       if (payload.Lead && typeof payload.Lead === "string") payload.Lead = [payload.Lead];
 
-      const res = await fetch(`/api/automations/${form.id}`, {
+      const res = await apiFetch(`/automations/${form.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -143,7 +144,7 @@ export default function AutomationsPage() {
     if (!confirm("Are you sure you want to delete this automation?")) return;
     setError(null);
     try {
-      const res = await fetch(`/api/automations/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`/automations/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const j: { error?: string } = await res.json();
         throw new Error(j.error ?? "Error");
@@ -179,7 +180,7 @@ export default function AutomationsPage() {
   const runScheduler = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/scheduler");
+      const res = await apiFetch("/scheduler");
       const json: { results?: Array<{ status?: string }> } = await res.json();
       console.log("Scheduler result:", json);
       // Show a simple summary alert

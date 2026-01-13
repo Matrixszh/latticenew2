@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Users, Calendar, Zap, ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api";
 
 const container = {
   hidden: { opacity: 0 },
@@ -28,9 +29,9 @@ export default function Home() {
     async function fetchStats() {
       try {
         const [leadsRes, eventsRes, autoRes] = await Promise.all([
-          fetch("/api/leads"),
-          fetch("/api/events"),
-          fetch("/api/automations")
+          apiFetch("/leads"),
+          apiFetch("/events"),
+          apiFetch("/automations")
         ]);
 
         const leads = await leadsRes.json();
