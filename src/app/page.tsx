@@ -61,7 +61,7 @@ export default function Home() {
     >
       <motion.div variants={item}>
         <h1 className="text-3xl font-bold tracking-tight text-gray-900">Dashboard</h1>
-        <p className="text-muted-foreground mt-2">Welcome back to Lattice AI. Here's what's happening today.</p>
+        <p className="text-muted-foreground mt-2">Welcome back to Crodus AI. Here's what's happening today.</p>
       </motion.div>
 
       <motion.div variants={item} className="grid gap-6 md:grid-cols-3">

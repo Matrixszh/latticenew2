@@ -22,7 +22,7 @@ export default function Sidebar() {
       <div className="flex h-16 items-center border-b border-border px-6">
         <div className="flex items-center gap-2 font-bold text-xl text-primary">
           <Zap className="h-6 w-6" />
-          <span>Lattice AI</span>
+          <span>Crodus AI</span>
         </div>
       </div>
       

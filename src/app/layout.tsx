@@ -16,16 +16,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Lattice AI CRM",
+  title: "Crodus AI CRM",
   description: "Advanced CRM & Automation Platform",
 };
 
 declare global {
-  var __latticeSchedulerStarted: boolean | undefined;
+  var __crodusSchedulerStarted: boolean | undefined;
 }
 
-if (!globalThis.__latticeSchedulerStarted) {
-  globalThis.__latticeSchedulerStarted = true;
+if (!globalThis.__crodusSchedulerStarted) {
+  globalThis.__crodusSchedulerStarted = true;
   setInterval(() => {
     runScheduler().catch(() => {});
   }, 60000);
@@ -44,7 +44,7 @@ export default function RootLayout({
         <Sidebar />
         <main className="flex-1 md:ml-64 min-h-screen flex flex-col bg-muted/30">
           <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur-sm shadow-sm md:hidden">
-            <div className="font-bold text-lg">Lattice AI</div>
+            <div className="font-bold text-lg">Crodus AI</div>
             {/* Mobile menu trigger would go here */}
           </header>
           
