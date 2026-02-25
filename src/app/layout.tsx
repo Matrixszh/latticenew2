@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import PageTransition from "@/components/PageTransition";
-import { POST as runScheduler } from "@/app/api/scheduler/route";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,17 +18,6 @@ export const metadata: Metadata = {
   title: "Crodus AI CRM",
   description: "Advanced CRM & Automation Platform",
 };
-
-declare global {
-  var __crodusSchedulerStarted: boolean | undefined;
-}
-
-if (!globalThis.__crodusSchedulerStarted) {
-  globalThis.__crodusSchedulerStarted = true;
-  setInterval(() => {
-    runScheduler().catch(() => {});
-  }, 60000);
-}
 
 export default function RootLayout({
   children,

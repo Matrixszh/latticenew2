@@ -72,25 +72,6 @@ export default function AutomationsPage() {
     loadAutomations();
   }, []);
 
-  useEffect(() => {
-    let timer: number | undefined;
-    const start = () => {
-      if (timer) return;
-      timer = setInterval(async () => {
-        try {
-          const hasActive = automations.some(a => a.Active);
-          if (!hasActive) return;
-          await apiFetch("/scheduler", { cache: "no-store" });
-        } catch {
-        }
-      }, 60000) as unknown as number;
-    };
-    start();
-    return () => {
-      if (timer) clearInterval(timer as unknown as number);
-    };
-  }, [automations]);
-
   const createAutomation = async () => {
     setError(null);
     try {
